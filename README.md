@@ -1,4 +1,16 @@
-# 🦊 Firefox VPN Client
+# 🦊 FoxyProxy
+
+[Foxy Proxy для Windows — запуск и сборка](desktop/README.ru.md)
+
+## Основа проекта и благодарности
+
+FoxyProxy — Windows-клиент, созданный на основе следующих открытых проектов:
+
+- [firefox-vpn-client](https://github.com/UjuiUjuMandan/firefox-vpn-client/tree/c1c5d895a2c52c69a9e06e672eae5074c9cc3fa1) — основа Go-клиента, авторизация Firefox Accounts и подключение к прокси Mozilla. Исходный проект также доступен в [4q4r/firefox-vpn-client](https://github.com/4q4r/firefox-vpn-client).
+- [FoxyVPN](https://github.com/Vauth/FoxyVPN/tree/0e344de67dea1df370342d354bb6240b50201abc) — пример для входа через Mozilla и оформления Windows-приложения. Лицензия MIT сохранена в [desktop/LICENSE.FoxyVPN](desktop/LICENSE.FoxyVPN).
+- [sing-box](https://github.com/SagerNet/sing-box/tree/v1.14.4) — отдельный компонент для виртуального адаптера и режима «Весь ПК». Его лицензия включается в папку `tun` при сборке.
+
+Ниже сохранена техническая документация исходного Go-клиента; инструкция для Windows находится по ссылке выше.
 
 <div align="center">
 

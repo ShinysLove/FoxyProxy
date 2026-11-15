@@ -161,6 +161,9 @@ func logAddr(addr net.Addr) string {
 }
 
 func main() {
+	if runDesktopCommand() {
+		return
+	}
 	flag.Usage = func() {
 		out := flag.CommandLine.Output()
 		fmt.Fprintln(out, "Usage of proxy-demo:")
@@ -565,15 +568,23 @@ func refreshRuntimeAuth(auth *runtimeAuth) (*runtimeAuth, error) {
 		return nil, fmt.Errorf("no refresh token available")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-	token, err := vpnclient.FxaRefreshToken(ctx, auth.Token.RefreshToken)
+	refresh := auth.refreshToken
+	if refresh == nil {
+		refresh = vpnclient.FxaRefreshToken
+	}
+	token, err := refresh(ctx, auth.Token.RefreshToken)
 	cancel()
 	if err != nil {
 		return nil, err
 	}
-	if err := vpnclient.SaveTokens(token); err != nil {
+	saveToken := auth.saveToken
+	if saveToken == nil {
+		saveToken = vpnclient.SaveTokens
+	}
+	if err := saveToken(token); err != nil {
 		logWarn("saving refreshed tokens failed: %v", err)
 	}
-	return &runtimeAuth{Token: token, ObtainedAt: time.Now()}, nil
+	return &runtimeAuth{Token: token, ObtainedAt: time.Now(), saveToken: auth.saveToken, refreshToken: auth.refreshToken}, nil
 }
 
 func prepareDemoInputs(forceLogin bool, sessionToken string, needServerList bool) (*runtimeAuth, string, []vpnclient.Country, *sessionTokenPool) {
@@ -1971,8 +1982,10 @@ func (c *pooledTunnelConn) CloseWrite() error {
 }
 
 type runtimeAuth struct {
-	Token      *vpnclient.TokenResponse
-	ObtainedAt time.Time
+	Token        *vpnclient.TokenResponse
+	ObtainedAt   time.Time
+	saveToken    func(*vpnclient.TokenResponse) error
+	refreshToken func(context.Context, string) (*vpnclient.TokenResponse, error)
 }
 
 func (a *runtimeAuth) accessTokenValid(now time.Time) bool {
@@ -1988,6 +2001,11 @@ type socksServer struct {
 	handshakeTimeout time.Duration
 	idleTimeout      time.Duration
 	connSlots        chan struct{}
+	traffic          *socksTraffic
+}
+
+type socksTraffic struct {
+	sent, received atomic.Uint64
 }
 
 func newSocksServer(upstream tunnelOpener, handshakeTimeout, idleTimeout time.Duration, maxConns int) *socksServer {
@@ -2074,7 +2092,7 @@ func (s *socksServer) handleConn(conn net.Conn) {
 	}
 
 	logDebug("upstream tunnel open succeeded client=%s target=%s", clientAddr, logTarget(target))
-	proxyBidirectional(conn, upstreamConn, s.idleTimeout)
+	proxyBidirectional(conn, upstreamConn, s.idleTimeout, s.traffic)
 	logDebug("client disconnected client=%s target=%s duration=%s", clientAddr, logTarget(target), time.Since(start).Round(time.Millisecond))
 }
 
@@ -2321,7 +2339,7 @@ func roundTripWithOpenTimeout(timeout time.Duration, do func(context.Context) (*
 	}
 }
 
-func proxyBidirectional(clientConn, upstreamConn net.Conn, idleTimeout time.Duration) {
+func proxyBidirectional(clientConn, upstreamConn net.Conn, idleTimeout time.Duration, traffic *socksTraffic) {
 	var activity func()
 	done := make(chan struct{})
 
@@ -2338,9 +2356,14 @@ func proxyBidirectional(clientConn, upstreamConn net.Conn, idleTimeout time.Dura
 		activity = func() {}
 	}
 
+	var sent, received *atomic.Uint64
+	if traffic != nil {
+		sent, received = &traffic.sent, &traffic.received
+	}
+
 	results := make(chan error, 2)
 	go func() {
-		err := copyConn(upstreamConn, clientConn, activity)
+		err := copyConn(upstreamConn, clientConn, activity, sent)
 		if err == nil {
 			closeWrite(upstreamConn)
 		}
@@ -2348,7 +2371,7 @@ func proxyBidirectional(clientConn, upstreamConn net.Conn, idleTimeout time.Dura
 	}()
 
 	go func() {
-		err := copyConn(clientConn, upstreamConn, activity)
+		err := copyConn(clientConn, upstreamConn, activity, received)
 		if err == nil {
 			closeWrite(clientConn)
 		}
@@ -2407,7 +2430,7 @@ func closeIdleConns(clientConn, upstreamConn net.Conn, idleTimeout time.Duration
 	}
 }
 
-func copyConn(dst, src net.Conn, activity func()) error {
+func copyConn(dst, src net.Conn, activity func(), transferred *atomic.Uint64) error {
 	buf := copyBufferPool.Get().([]byte)
 	defer copyBufferPool.Put(buf)
 
@@ -2417,6 +2440,9 @@ func copyConn(dst, src net.Conn, activity func()) error {
 			activity()
 			nw, writeErr := dst.Write(buf[:nr])
 			if nw > 0 {
+				if transferred != nil {
+					transferred.Add(uint64(nw))
+				}
 				activity()
 			}
 			if writeErr != nil {

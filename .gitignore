@@ -1,3 +1,6 @@
 # Root-level build artifacts compiled from cmd/proxy-demo (never commit binaries).
 /proxy-demo
 /fox-proxy
+/desktop/bin/
+/desktop/obj/
+/dist/

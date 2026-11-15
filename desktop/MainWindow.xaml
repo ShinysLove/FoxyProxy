@@ -1,0 +1,129 @@
+<Window x:Class="FoxyProxy.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Foxy Proxy" Icon="FoxyProxy.ico" Width="550" Height="790" MinWidth="406" MinHeight="450"
+        WindowStartupLocation="CenterScreen" Background="#FFF8F6" Foreground="#221A16"
+        FontFamily="Segoe UI" FontSize="15" Language="ru-RU" UseLayoutRounding="True">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Muted" Color="#53433D" />
+        <Style x:Key="Pill" TargetType="Button">
+            <Setter Property="Background" Value="#A03A00" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="18,9" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Face" Background="{TemplateBinding Background}"
+                                BorderBrush="Transparent" BorderThickness="2" CornerRadius="22"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Face" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Face" Property="BorderBrush" Value="#221A16" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Face" Property="Opacity" Value="0.55" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28,18,28,22" MaxWidth="480">
+            <StackPanel Orientation="Horizontal">
+                <Image Source="FoxyProxy.ico" Width="32" Height="32" Margin="0,0,9,0" />
+                <TextBlock Text="Foxy Proxy" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </StackPanel>
+            <Button x:Name="PowerButton" Visibility="Collapsed" Click="ToggleConnection" Width="152" Height="152" Margin="0,21,0,10"
+                    Foreground="#A03A00" Cursor="Hand" HorizontalAlignment="Center"
+                    AutomationProperties.Name="Включить прокси">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                            <Ellipse x:Name="Ring" Fill="{TemplateBinding Foreground}" Opacity="0.13" />
+                            <Ellipse Margin="15" Fill="{TemplateBinding Foreground}" Opacity="0.17" />
+                            <Path Data="M 24,4 L 24,23 M 13,10 A 16,16 0 1 0 35,10"
+                                  Stretch="Uniform" Width="42" Height="42" StrokeThickness="4"
+                                  Stroke="{TemplateBinding Foreground}" StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Ring" Property="Opacity" Value="0.23" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Ring" Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}" />
+                                <Setter TargetName="Ring" Property="StrokeThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Ring" Property="Opacity" Value="0.08" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+            <TextBlock x:Name="StatusTitle" Margin="0,14,0,0" FontSize="24" FontWeight="SemiBold"
+                       TextAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"
+                       Foreground="{StaticResource Muted}" AutomationProperties.LiveSetting="Polite" />
+            <TextBox x:Name="ProxyAddress" IsReadOnly="True" Visibility="Collapsed" BorderThickness="0"
+                     Background="Transparent" Foreground="{StaticResource Muted}" TextAlignment="Center"
+                     AutomationProperties.Name="Адрес локального прокси" Margin="0,5,0,0" />
+
+            <Border x:Name="TrafficCard" Visibility="Collapsed" Background="#FFFFF1EC" CornerRadius="16"
+                    Padding="16,13" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="Трафик за подключение" FontWeight="SemiBold" />
+                    <TextBlock x:Name="TrafficTotal" FontSize="22" FontWeight="SemiBold" Margin="0,2,0,1" />
+                    <TextBlock x:Name="TrafficBreakdown" Foreground="{StaticResource Muted}" FontSize="13" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Border x:Name="ModesCard" Visibility="Collapsed" Background="#FFFFF1EC" CornerRadius="16" Padding="16,13" Margin="0,21,0,10">
+                <StackPanel>
+                    <TextBlock Text="Режим подключения" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <WrapPanel x:Name="ModePanel">
+                        <RadioButton x:Name="WholePcMode" Content="Весь ПК" GroupName="ProxyMode"
+                                     Margin="0,0,22,4" VerticalContentAlignment="Center" Checked="ModeChanged" />
+                        <RadioButton x:Name="LocalMode" Content="Локальный SOCKS5" GroupName="ProxyMode"
+                                     IsChecked="True" Margin="0,0,0,4" VerticalContentAlignment="Center" Checked="ModeChanged" />
+                    </WrapPanel>
+                    <TextBlock x:Name="ModeDescription" Foreground="{StaticResource Muted}" FontSize="13" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Border Background="#FFFFF1EC" CornerRadius="16" Padding="16,13" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="Сервер Mozilla" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <ComboBox x:Name="ServerChoice" DisplayMemberPath="Display" SelectedValuePath="ID"
+                              AutomationProperties.Name="Сервер Mozilla" MaxDropDownHeight="300" />
+                    <DockPanel Margin="0,9,0,0">
+                        <Button x:Name="RefreshServersButton" DockPanel.Dock="Right" Style="{StaticResource Pill}"
+                                Click="RefreshServers" Content="Обновить пинг" Margin="9,0,0,0" />
+                        <TextBlock x:Name="ServerStatus" Foreground="{StaticResource Muted}" FontSize="13"
+                                   VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                                   Text="Загрузите список серверов и их задержку." />
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Background="#FFFFF1EC" CornerRadius="16" Padding="16,13" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="Аккаунт Mozilla" FontWeight="SemiBold" />
+                    <TextBlock x:Name="AccountHint" Foreground="{StaticResource Muted}" Margin="0,3,0,10"
+                               FontSize="13" TextWrapping="Wrap" />
+                    <Button x:Name="AccountButton" Style="{StaticResource Pill}" HorizontalAlignment="Left"
+                            Click="AccountAction" Content="Войти через Firefox" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

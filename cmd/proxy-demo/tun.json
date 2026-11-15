@@ -1,0 +1,49 @@
+{
+  "log": {
+    "level": "info"
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "https",
+        "tag": "dns-through-proxy",
+        "server": "1.1.1.1",
+        "detour": "firefox",
+        "tls": { "server_name": "cloudflare-dns.com" }
+      }
+    ],
+    "final": "dns-through-proxy"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "windows",
+      "interface_name": "FoxyProxy",
+      "address": ["172.30.197.1/30", "fd82:2567:de4a::1/126"],
+      "mtu": 1400,
+      "auto_route": true,
+      "strict_route": true,
+      "stack": "gvisor"
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "socks",
+      "tag": "firefox",
+      "server": "127.0.0.1",
+      "server_port": %d,
+      "version": "5",
+      "network": "tcp"
+    },
+    { "type": "direct", "tag": "worker-direct" }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "final": "firefox",
+    "rules": [
+      { "port": 53, "action": "hijack-dns" },
+      { "network": "tcp", "process_path_regex": [%s], "action": "route", "outbound": "worker-direct" },
+      { "network": ["udp", "icmp"], "action": "reject", "method": "default" }
+    ]
+  }
+}

@@ -795,7 +795,7 @@ func TestProxyBidirectionalClosesBothSidesOnCopyError(t *testing.T) {
 	upstream := newControlledNetConn(nil)
 	done := make(chan struct{})
 	go func() {
-		proxyBidirectional(client, upstream, 0)
+		proxyBidirectional(client, upstream, 0, nil)
 		close(done)
 	}()
 
@@ -809,6 +809,55 @@ func TestProxyBidirectionalClosesBothSidesOnCopyError(t *testing.T) {
 	default:
 		t.Fatal("expected upstream connection to be closed")
 	}
+}
+
+func TestProxyBidirectionalCountsLiveTrafficInBothDirections(t *testing.T) {
+	t.Parallel()
+
+	client, localPeer := net.Pipe()
+	upstream, remotePeer := net.Pipe()
+	defer localPeer.Close()
+	defer remotePeer.Close()
+	for _, conn := range []net.Conn{client, localPeer, upstream, remotePeer} {
+		_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+	}
+
+	traffic := &socksTraffic{}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer client.Close()
+		defer upstream.Close()
+		proxyBidirectional(client, upstream, 0, traffic)
+	}()
+
+	checkTransfer := func(from, to net.Conn, payload string) {
+		t.Helper()
+		writeDone := make(chan error, 1)
+		go func() {
+			_, err := io.WriteString(from, payload)
+			writeDone <- err
+		}()
+		buf := make([]byte, len(payload))
+		if _, err := io.ReadFull(to, buf); err != nil || string(buf) != payload {
+			t.Fatalf("received %q, error: %v", buf, err)
+		}
+		if err := <-writeDone; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	const upload, download = "request", "response data"
+	checkTransfer(localPeer, remotePeer, upload)
+	checkTransfer(remotePeer, localPeer, download)
+	waitForCondition(t, time.Second, func() bool {
+		return traffic.sent.Load() == uint64(len(upload)) &&
+			traffic.received.Load() == uint64(len(download))
+	})
+
+	_ = localPeer.Close()
+	_ = remotePeer.Close()
+	<-done
 }
 
 type fakeHalfCloseConn struct {

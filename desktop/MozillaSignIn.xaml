@@ -1,0 +1,20 @@
+<Window x:Class="FoxyProxy.MozillaSignIn"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Вход в Mozilla" Icon="FoxyProxy.ico" Width="570" Height="720" MinWidth="420" MinHeight="480"
+        WindowStartupLocation="CenterOwner" Background="#FFF8F6" FontFamily="Segoe UI">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#FFFFF1EC" Padding="18,12">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Отмена" Padding="12,4" IsCancel="True" />
+                <StackPanel Margin="0,0,12,0">
+                    <TextBlock Text="Вход в Mozilla" FontSize="18" FontWeight="SemiBold" Foreground="#221A16" />
+                    <TextBlock x:Name="BrowserStatus" Text="accounts.firefox.com" Foreground="#53433D"
+                               TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <wv:WebView2 x:Name="Browser" />
+    </DockPanel>
+</Window>
