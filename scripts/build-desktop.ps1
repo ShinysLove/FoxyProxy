@@ -22,7 +22,7 @@ $installer = Join-Path $package 'MicrosoftEdgeWebview2Setup.exe'
 New-Item -ItemType Directory -Path $package, $OutputDirectory -Force | Out-Null
 Push-Location $repo
 try {
-    curl.exe --fail --location --retry 2 --silent --show-error --output $installer 'https://go.microsoft.com/fwlink/p/?LinkId=2124703'
+    curl.exe --fail --location --retry 4 --retry-all-errors --silent --show-error --output $installer 'https://go.microsoft.com/fwlink/p/?LinkId=2124703'
     if ($LASTEXITCODE -ne 0) { throw 'WebView2 installer download failed' }
     $signature = Get-AuthenticodeSignature -LiteralPath $installer
     if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch '^CN=Microsoft Corporation,') {
@@ -45,7 +45,7 @@ try {
         $singName = "sing-box-$singVersion-windows-$($target.GoArch)"
         $singZip = Join-Path $stage "$singName.zip"
         $singUrl = "https://github.com/SagerNet/sing-box/releases/download/v$singVersion/$singName.zip"
-        curl.exe --fail --location --retry 2 --silent --show-error --output $singZip $singUrl
+        curl.exe --fail --location --retry 4 --retry-all-errors --silent --show-error --output $singZip $singUrl
         if ($LASTEXITCODE -ne 0) { throw "sing-box download failed for $($target.GoArch)" }
         if ((Get-FileHash -LiteralPath $singZip -Algorithm SHA256).Hash -ne $target.Hash) {
             throw "sing-box SHA-256 verification failed for $($target.GoArch)"
@@ -63,6 +63,7 @@ try {
 
     Copy-Item -LiteralPath 'desktop/README.ru.md' -Destination $package
     Copy-Item -LiteralPath 'desktop/LICENSE.FoxyVPN' -Destination $package
+    Copy-Item -LiteralPath 'LICENSE' -Destination $package
     Compress-Archive -LiteralPath $package -DestinationPath $archive -CompressionLevel Optimal -Force
     Write-Output $archive
 }
