@@ -37,6 +37,14 @@ try {
             -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -o $app
         if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for $($target.Rid)" }
 
+        # WebView2 API reference files are for developers, not runtime dependencies.
+        foreach ($documentation in @('Microsoft.Web.WebView2.Core.xml', 'Microsoft.Web.WebView2.WinForms.xml', 'Microsoft.Web.WebView2.Wpf.xml')) {
+            $documentationPath = Join-Path $app $documentation
+            if (Test-Path -LiteralPath $documentationPath) {
+                Remove-Item -LiteralPath $documentationPath
+            }
+        }
+
         $worker = Join-Path $app 'foxy-worker.exe'
         $env:GOARCH = $target.GoArch
         go build -trimpath -o $worker ./cmd/proxy-demo
